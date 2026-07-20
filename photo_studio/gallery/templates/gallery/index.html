@@ -1,0 +1,369 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الباحث الذكي للأرشيف الصوري</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;       
+            --card-bg: #1e293b;        
+            --accent-color: #3b82f6;   
+            --text-color: #f1f5f9;
+            --path-bg: #000000;
+            --success-color: #10b981;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header { margin-bottom: 30px; text-align: center; }
+        header h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 5px; color: #fff; }
+        header p { color: #94a3b8; font-size: 1.1rem; }
+
+        /* منطقة الرفع */
+        .upload-area {
+            width: 100%;
+            max-width: 850px;
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            cursor: pointer;
+            background-color: var(--card-bg);
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .upload-area:hover { 
+            border-color: var(--accent-color); 
+            background-color: #263345;
+        }
+
+        /* حاوية النتائج */
+        #results-container { 
+            width: 100%; 
+            max-width: 850px;
+            margin-top: 30px; 
+            box-sizing: border-box;
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .comparison-view {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .img-wrapper {
+            position: relative;
+            text-align: center;
+        }
+
+        .img-wrapper img {
+            width: 140px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 4px solid var(--border-color);
+            transition: 0.3s;
+        }
+
+        .img-wrapper p { margin-top: 10px; color: #94a3b8; font-size: 0.9rem; }
+
+        .match-badge {
+            background: var(--success-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .path-section {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .path-label {
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+            font-size: 1.1rem;
+        }
+
+        .path-display {
+            font-family: 'Consolas', monospace;
+            background: black;
+            color: #4ade80;
+            padding: 15px;
+            border-radius: 8px;
+            word-break: break-all;
+            direction: ltr;
+            text-align: left;
+            font-size: 1rem;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .copy-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            font-weight: bold;
+            margin-top: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .copy-btn:hover { background: #2563eb; }
+        .copy-btn:active { transform: scale(0.98); }
+
+        .hidden { display: none !important; }
+        .scanning { border-color: var(--accent-color) !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 100% { box-shadow: 0 0 0 15px rgba(0,0,0,0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        #previewImage { max-width: 150px; display: none; margin: 10px auto; border-radius: 10px; }
+        .loader-container { text-align: center; margin: 20px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top-color: var(--accent-color); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        #noResults {
+            background: #450a0a; color: #fca5a5; padding: 20px; border-radius: 12px; border: 1px solid #7f1d1d; text-align: center; font-weight: bold;
+        }
+
+        footer { margin-top: auto; padding: 20px; color: #64748b; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<!-- ✅ إضافة مهمة: توليد توكن الحماية -->
+<form style="display:none">{% csrf_token %}</form>
+
+<header>
+    <h1>🔍 الأرشيف الذكي</h1>
+    <p>نظام استرجاع موقع الصور الأصلية بالذكاء الاصطناعي</p>
+</header>
+
+<main>
+    <!-- منطقة الرفع -->
+    <div class="upload-area" id="uploadArea">
+        <div id="placeholder">
+            <span style="font-size: 3.5rem; display: block; margin-bottom: 10px;">📁</span>
+            <h3>اضغط هنا لرفع صورة العميل</h3>
+            <p style="color: #64748b;">سيقوم النظام بالبحث عن الملف الأصلي في الهارد</p>
+        </div>
+        <img id="previewImage" alt="Uploaded">
+        <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <!-- مؤشر البحث -->
+    <div id="loader" class="loader-container hidden">
+        <div class="spinner"></div>
+        <p>جاري مسح الملفات...</p>
+    </div>
+
+    <!-- النتائج -->
+    <div id="results-container">
+        <div id="results-content"></div>
+        <div id="noResults" class="hidden">
+            ❌ لم يتم العثور على هذه الصورة في الأرشيف.
+        </div>
+    </div>
+</main>
+
+<footer>
+    تم التطوير لخدمة قطاع التصوير والإنتاج &copy; 2025
+</footer>
+
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const previewImage = document.getElementById('previewImage');
+    const placeholder = document.getElementById('placeholder');
+    const loader = document.getElementById('loader');
+    const resultsContent = document.getElementById('results-content');
+    const noResults = document.getElementById('noResults');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                placeholder.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+            uploadImage(file);
+        }
+    });
+
+    // دالة جلب التوكن المحسنة
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function uploadImage(file) {
+        loader.classList.remove('hidden');
+        resultsContent.innerHTML = '';
+        noResults.classList.add('hidden');
+        previewImage.classList.add('scanning');
+
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // جلب التوكن الأمني
+        const csrftoken = getCookie('csrftoken');
+
+        fetch('/search/', {
+            method: 'POST',
+            body: formData,
+            headers: { 
+                'X-CSRFToken': csrftoken 
+            }
+        })
+        .then(response => {
+            // معالجة الأخطاء الأمنية
+            if (response.status === 403) {
+                throw new Error("جلسة العمل انتهت (403)، يرجى تحديث الصفحة.");
+            }
+            if (!response.ok) {
+                throw new Error("حدث خطأ في السيرفر");
+            }
+            return response.json();
+        })
+        .then(data => {
+            loader.classList.add('hidden');
+            previewImage.classList.remove('scanning');
+            displayResults(data);
+        })
+        .catch(err => {
+            console.error(err);
+            loader.classList.add('hidden');
+            previewImage.classList.remove('scanning');
+            // عرض رسالة خطأ واضحة (اختياري)
+            if (err.message.includes('403')) {
+                alert("يرجى تحديث الصفحة (Refresh) والمحاولة مرة أخرى.");
+            } else {
+                alert('خطأ في النظام: ' + err.message);
+            }
+        });
+    }
+
+    function displayResults(data) {
+        if (!data || data.length === 0 || data.error) {
+            noResults.classList.remove('hidden');
+            return;
+        }
+
+        const item = data[0];
+        const percentage = Math.max(0, (1 - item.distance) * 100).toFixed(1);
+        const dbImgSrc = item.thumbnail ? `data:image/jpeg;base64,${item.thumbnail}` : '';
+
+        const div = document.createElement('div');
+        div.className = 'result-card';
+        div.innerHTML = `
+            <div class="comparison-view">
+                <div class="img-wrapper">
+                    <img src="${previewImage.src}" alt="Source">
+                    <p>الصورة المرفوعة</p>
+                </div>
+                
+                <div style="font-size: 2rem;">✅</div>
+
+                <div class="img-wrapper">
+                    <div class="match-badge">${percentage}% تطابق</div>
+                    <img src="${dbImgSrc}" alt="Database" style="border-color: #10b981;">
+                    <p>الموجودة في الأرشيف</p>
+                </div>
+            </div>
+
+            <div class="path-section">
+                <span class="path-label">📂 مسار الملف الأصلي (Location):</span>
+                <div class="path-display" id="pathText">${item.path}</div>
+                
+                <button class="copy-btn" onclick="copyPath()">
+                    📋 نسخ المسار (Copy Path)
+                </button>
+            </div>
+        `;
+        resultsContent.appendChild(div);
+    }
+
+    function copyPath() {
+        const pathText = document.getElementById('pathText').innerText;
+        navigator.clipboard.writeText(pathText).then(() => {
+            const btn = document.querySelector('.copy-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "✔ تم النسخ بنجاح!";
+            btn.style.background = "#10b981";
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = "#3b82f6";
+            }, 2000);
+        });
+    }
+</script>
+
+</body>
+</html>
